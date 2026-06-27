@@ -27,6 +27,7 @@ const ABI = [
   "function balanceOf(address) view returns (uint256)",
   "function owner() view returns (address)",
   "event PegMint(address indexed to, uint256 value, string btmkTxid)",
+  "event PegBurn(address indexed from, uint256 value, string btmkAddress)",
 ];
 
 const provider = new ethers.JsonRpcProvider(RPC);
@@ -65,15 +66,26 @@ async function bridgeState() {
     readFile(DID_PATH, "utf8").then(JSON.parse).catch(() => null),
     reserveBTMK(),
   ]);
-  const evs = await wbtmk.queryFilter(wbtmk.filters.PegMint(), 0, "latest").catch(() => []);
-  const deposits = evs.map((e) => ({
-    "@type": "PegMint",
-    btmkTxid: e.args.btmkTxid,
-    amount: ethers.formatEther(e.args.value),
-    recipient: e.args.to,
-    evmBlock: e.blockNumber,
-    evmTx: e.transactionHash,
-  })).reverse();
+  const [mints, burns] = await Promise.all([
+    wbtmk.queryFilter(wbtmk.filters.PegMint(), 0, "latest").catch(() => []),
+    wbtmk.queryFilter(wbtmk.filters.PegBurn(), 0, "latest").catch(() => []),
+  ]);
+  let redeem = {};
+  try { redeem = JSON.parse(await readFile(join(__dir, "redeem-state.json"), "utf8")); } catch {}
+  const activity = [
+    ...mints.map((e) => ({
+      "@type": "PegIn", direction: "in",
+      amount: ethers.formatEther(e.args.value),
+      party: e.args.to, l1Txid: e.args.btmkTxid, l1Address: RESERVE,
+      evmBlock: e.blockNumber, evmTx: e.transactionHash,
+    })),
+    ...burns.map((e) => ({
+      "@type": "PegOut", direction: "out",
+      amount: ethers.formatEther(e.args.value),
+      party: e.args.from, l1Txid: redeem[e.transactionHash]?.l1Txid || null, l1Address: e.args.btmkAddress,
+      evmBlock: e.blockNumber, evmTx: e.transactionHash,
+    })),
+  ].sort((a, b) => b.evmBlock - a.evmBlock);
 
   const consKey = did?.service?.[0]?.serviceEndpoint?.consensusPubkeyHex || null;
   const attested = !!did?.service?.[0]?.serviceEndpoint?.attestation;
@@ -90,7 +102,7 @@ async function bridgeState() {
       recipient: { address: RECIPIENT, balance: ethers.formatEther(recipBal) },
     },
     l1: { network: "Bitmark", reserveAddress: RESERVE, ...reserve },
-    deposits,
+    activity,
   };
 }
 

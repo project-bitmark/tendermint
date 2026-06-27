@@ -73,8 +73,26 @@ Proven live: a real **0.8 BTMK** deposit (`7613b651…54268e12`) was detected
 L1 txid recorded in the `PegMint` event. `MIN_CONF=0` mints on first-seen (snappy
 demo); raise it for real value.
 
-Still TODO for a full loop: peg-out watcher (burn → release BTMK from the reserve)
-and per-deposit recipient mapping (e.g. `OP_RETURN`-encoded EVM address).
+## Peg-out: release BTMK back to L1 (working — full round-trip)
+
+`redeem-watcher.js` closes the loop. It watches wBTMK `PegBurn` events and, for
+each, builds + broadcasts a **real Bitmark transaction** from the reserve back to
+the burner's L1 address:
+
+- `btmk-tx.js` — legacy P2PKH tx builder/signer (pure JS, `@noble`): sighash,
+  DER, low-S. Normalizes the signing key to **even-Y** because nostr/x-only
+  (BIP340) addresses imply even-Y — the x-only-derived reserve is spent by `d` if
+  its pubkey is even, else `n-d`.
+- `redeem-watcher.js` — `PegBurn` → `listunspent` → build → `transaction.broadcast`.
+  Idempotent via `redeem-state.json`.
+- `burn.js` — initiate a peg-out: `BURNER_PK=0x.. node burn.js <amount> <btmk-addr>`.
+
+Proven live, full round-trip: 0.8 BTMK in → 0.8 wBTMK → burn 0.5 →
+**0.5 BTMK released** on L1 (`a4308960…d3145c`), 0.299 change back to the reserve.
+The UI feed shows both directions, each linking its Bitmark L1 txid.
+
+Still TODO: per-deposit recipient mapping (e.g. `OP_RETURN`-encoded EVM address);
+multi-burn UTXO chaining before the first release confirms.
 
 ## Bridge UI (no build)
 

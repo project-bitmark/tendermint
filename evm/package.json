@@ -7,9 +7,13 @@
   "scripts": {
     "demo": "node demo.js",
     "watch": "node peg-watcher.js",
+    "redeem": "node redeem-watcher.js",
+    "burn": "node burn.js",
     "ui": "node server.js"
   },
   "dependencies": {
+    "@noble/hashes": "^1.8.0",
+    "@noble/secp256k1": "^2.3.0",
     "ethers": "^6.13.0"
   }
 }

@@ -1,7 +1,8 @@
 # JS deps / build
 evm/node_modules/
-# peg watcher runtime state (processed txids)
+# peg watcher runtime state (processed txids / redeems)
 evm/peg-state.json
+evm/redeem-state.json
 # generated UI screenshot
 ui/preview.png
 # Foundry artifacts

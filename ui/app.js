@@ -22,23 +22,36 @@ function hydrate(state) {
   if (att) att.hidden = !get(state, "identity.attested");
 }
 
-function renderFeed(deposits = []) {
+const isTxid = (s) => /^[0-9a-f]{64}$/i.test(s || "");
+
+function renderFeed(activity = []) {
   const tbody = $("[data-feed]");
-  $("[data-count]").textContent = deposits.length;
+  $("[data-count]").textContent = activity.length;
   tbody.innerHTML = "";
-  if (!deposits.length) {
-    tbody.innerHTML = `<tr class="empty"><td colspan="4">no deposits yet — send BTMK to the reserve address</td></tr>`;
+  if (!activity.length) {
+    tbody.innerHTML = `<tr class="empty"><td colspan="5">no activity yet — send BTMK to the reserve address</td></tr>`;
     return;
   }
   const tpl = $("#row");
-  for (const d of deposits) {
+  for (const a of activity) {
     const row = tpl.content.cloneNode(true);
-    $(".amt b", row).textContent = fmtAmount(d.amount);
-    $(".recip", row).textContent = short(d.recipient);
-    const a = $(".txid", row);
-    a.textContent = short(d.btmkTxid);
-    a.href = txUrl(d.btmkTxid);
-    $(".blk", row).textContent = "#" + d.evmBlock;
+    const flow = $(".flow", row);
+    flow.textContent = a.direction === "in" ? "peg-in ↓" : "peg-out ↑";
+    flow.className = "flow " + a.direction;
+    $(".amt b", row).textContent = fmtAmount(a.amount);
+    $(".party", row).textContent = short(a.party);
+    // L1 txid: link only when it's a real 64-hex txid (skip demo stubs / pending)
+    const l1 = $(".l1", row);
+    if (isTxid(a.l1Txid)) {
+      const link = document.createElement("a");
+      link.className = "txid"; link.target = "_blank"; link.rel = "noopener";
+      link.textContent = short(a.l1Txid); link.href = txUrl(a.l1Txid);
+      l1.appendChild(link);
+    } else {
+      l1.textContent = a.l1Txid ? short(a.l1Txid) : (a.direction === "out" ? "pending…" : "—");
+      l1.classList.add("muted-cell");
+    }
+    $(".blk", row).textContent = "#" + a.evmBlock;
     tbody.appendChild(row);
   }
 }
@@ -54,7 +67,7 @@ async function tick() {
     if (!r.ok) throw new Error(r.status);
     const state = await r.json();
     hydrate(state);
-    renderFeed(state.deposits);
+    renderFeed(state.activity);
     setStatus(true);
   } catch {
     setStatus(false);
