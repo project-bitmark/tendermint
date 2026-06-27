@@ -6,8 +6,8 @@ import * as secp from "@noble/secp256k1";
 import { Electrum, scripthashOfAddress } from "./electrum.js";
 import { buildSignedTx } from "./btmk-tx.js";
 import { opReturnScript, p2pkhAddress } from "./btmk.js";
+import { RESERVE } from "./config.js";
 
-const RESERVE = process.env.RESERVE_ADDR || "bV7H8TVVfvcstcoftiZ9cJuDYkaG9FSVwG";
 const FEE = BigInt(process.env.FEE_SATS || 100000);
 const HOST = process.env.ELECTRUM_HOST || "electrum.bitmark.rocks";
 const PORT = +(process.env.ELECTRUM_PORT || 50002);

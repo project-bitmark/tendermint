@@ -11,15 +11,13 @@ import { Electrum, scripthashOfAddress } from "./electrum.js";
 import { buildSignedTx } from "./btmk-tx.js";
 import { opReturnScript, p2pkhAddress } from "./btmk.js";
 import * as secp from "@noble/secp256k1";
+import { RPC, WBTMK, MARKING, RESERVE } from "./config.js";
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const UI_DIR = join(__dir, "..", "ui");
 const DID_PATH = join(__dir, "..", "agent.did.json");
 
 const PORT = +(process.env.UI_PORT || 8080);
-const RPC = process.env.RPC || "http://localhost:8545";
-const WBTMK = process.env.WBTMK || "0x816644F8bc4633D268842628EB10ffC0AdcB6099";
-const RESERVE = process.env.RESERVE_ADDR || "bV7H8TVVfvcstcoftiZ9cJuDYkaG9FSVwG";
 const RECIPIENT = process.env.USER_ADDR || "0xC6Fe5D33615a1C52c08018c47E8Bc53646A0E101";
 const EHOST = process.env.ELECTRUM_HOST || "electrum.bitmark.rocks";
 const EPORT = +(process.env.ELECTRUM_PORT || 50002);
@@ -33,7 +31,6 @@ const ABI = [
   "event PegBurn(address indexed from, uint256 value, string btmkAddress)",
 ];
 
-const MARKING = process.env.MARKING || "0x0F5575BC344f6F0b595A7B3a0bDEdE9a90859c6f";
 const MARK_ABI = ["event Marked(address indexed from, address indexed to, uint256 amount, string identity, string reason, uint256 index)"];
 
 const FAUCET_PK = process.env.FAUCET_PK || "0xE9B1D63E8ACD7FE676ACB43AFB390D4B0202DAB61ABEC9CF2A561E4BECB147DE";

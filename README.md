@@ -9,6 +9,11 @@ identity, and an on-chain **"Marks"** gifting contract — all driven from a
 > largely worthless 🙂) BTMK. Not production. The peg is a single-operator
 > federation; see caveats below.
 
+![Bitmark ⇄ wBTMK bridge dashboard](docs/screenshot.png)
+
+> The no-build dashboard: bridge in (deposit), give marks by `did:nostr`, bridge
+> out (redeem) — the full round-trip in the browser, over a live Bitmark bridge.
+
 ## Why
 
 The pieces exist separately — Tendermint+Bitcoin (Nomic, Babylon) and EVM+Bitcoin
@@ -54,10 +59,8 @@ Needs `evmosd` (evmos v20 prebuilt binary), Node 20+, and [Foundry](https://getf
 # 1. start the single-validator Tendermint/EVM devnet (JSON-RPC :8545)
 ./scripts/start-chain.sh
 
-# 2. deploy + exercise (see evm/README.md for the full sequence)
-cd evm && npm install
-forge create src/wBTMK.sol:wBTMK   --rpc-url http://localhost:8545 --private-key <test-key> --broadcast
-forge create src/Marking.sol:Marking --rpc-url http://localhost:8545 --private-key <test-key> --broadcast --constructor-args <wBTMK>
+# 2. deploy wBTMK + Marking (writes evm/deployment.json, read by everything)
+./scripts/deploy.sh
 
 # 3. bridge + UI
 npm run watch    # peg-in:  Bitmark deposits  -> wBTMK

@@ -29,9 +29,13 @@ fi
 
 cd "$REPO/evm"
 [ -d node_modules ] || npm install
-export RESERVE_ADDR="${RESERVE_ADDR:-bV7H8TVVfvcstcoftiZ9cJuDYkaG9FSVwG}"
-export WBTMK="${WBTMK:-0x816644F8bc4633D268842628EB10ffC0AdcB6099}"
-export MARKING="${MARKING:-0x0F5575BC344f6F0b595A7B3a0bDEdE9a90859c6f}"
+# addresses: deployment.json (from deploy.sh) feeds the JS via config.js; the JS
+# defaults match a clean deploy, so this works even without it.
+if [ -f deployment.json ]; then
+  export WBTMK="${WBTMK:-$(jq -r .wBTMK deployment.json)}"
+  export MARKING="${MARKING:-$(jq -r .marking deployment.json)}"
+  export RESERVE_ADDR="${RESERVE_ADDR:-$(jq -r .reserve deployment.json)}"
+fi
 export MIN_CONF="${MIN_CONF:-0}"
 # demo depositor for the UI "Deposit to me" button (a funded Bitmark L1 key)
 if [ -z "$DEPOSITOR_PK" ]; then

@@ -23,6 +23,18 @@
     </div>
   </header>
 
+  <details class="howto">
+    <summary>How it works</summary>
+    <div class="howto-body">
+      <ol>
+        <li><b>Bridge in</b> — send BTMK to the reserve on Bitmark L1 with your EVM address in an <code>OP_RETURN</code>; a watcher mints <b>wBTMK</b> to you on the Tendermint/EVM sidechain (~3s, final).</li>
+        <li><b>Use it</b> — <b>give marks</b>: gift wBTMK with a reason, recorded on-chain and tagged by your <code>did:nostr</code> identity. Bitmark's "currency for giving", made programmable.</li>
+        <li><b>Bridge out</b> — burn wBTMK and name a Bitmark address; a watcher releases BTMK back on L1.</li>
+      </ol>
+      <p class="muted">The validator is bound to a <code>did:nostr</code> agent (signed attestation), which also controls the L1 reserve. The peg is single-operator — a sidechain's security ceiling is its peg custody + validator set, not Bitmark's hashpower. Proof-of-concept, not production.</p>
+    </div>
+  </details>
+
   <main class="grid">
     <!-- island: Bitmark L1 reserve -->
     <section class="card" aria-labelledby="reserve-h">

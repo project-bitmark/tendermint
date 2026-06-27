@@ -12,3 +12,5 @@ evm/cache/
 .claude/settings.local.json
 # demo orchestration pids
 .demo-pids
+# deployment-specific addresses (from deploy.sh)
+evm/deployment.json

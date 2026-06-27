@@ -13,10 +13,8 @@ import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { execSync } from "node:child_process";
 import { Electrum, scripthashOfAddress } from "./electrum.js";
 import { buildSignedTx } from "./btmk-tx.js";
+import { RPC, WBTMK, RESERVE } from "./config.js";
 
-const RPC = process.env.RPC || "http://localhost:8545";
-const WBTMK = process.env.WBTMK || "0x816644F8bc4633D268842628EB10ffC0AdcB6099";
-const RESERVE = process.env.RESERVE_ADDR || "bV7H8TVVfvcstcoftiZ9cJuDYkaG9FSVwG";
 const FEE = BigInt(process.env.FEE_SATS || 100000);
 const STATE = process.env.STATE || "./redeem-state.json";
 const EHOST = process.env.ELECTRUM_HOST || "electrum.bitmark.rocks";

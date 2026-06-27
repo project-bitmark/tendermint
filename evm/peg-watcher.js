@@ -16,13 +16,11 @@
 import { ethers } from "ethers";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { Electrum, scripthashOfAddress } from "./electrum.js";
+import { RPC, WBTMK, RESERVE } from "./config.js";
 
 const HOST = process.env.ELECTRUM_HOST || "electrum.bitmark.rocks";
 const PORT = +(process.env.ELECTRUM_PORT || 50002);
-const RESERVE = process.env.RESERVE_ADDR;
-const USER = process.env.USER_ADDR;
-const RPC = process.env.RPC || "http://localhost:8545";
-const WBTMK = process.env.WBTMK;
+const USER = process.env.USER_ADDR || "0xC6Fe5D33615a1C52c08018c47E8Bc53646A0E101";
 const PK = process.env.PEG_OPERATOR_PK ||
   "0xE9B1D63E8ACD7FE676ACB43AFB390D4B0202DAB61ABEC9CF2A561E4BECB147DE";
 const MIN_CONF = +(process.env.MIN_CONF || 1);
@@ -34,11 +32,6 @@ const ABI = [
   "function balanceOf(address) view returns (uint256)",
   "function owner() view returns (address)",
 ];
-
-if (!RESERVE || !USER || !WBTMK) {
-  console.error("required env: RESERVE_ADDR, USER_ADDR, WBTMK");
-  process.exit(1);
-}
 
 const seen = new Set(existsSync(STATE) ? JSON.parse(readFileSync(STATE, "utf8")) : []);
 const persist = () => writeFileSync(STATE, JSON.stringify([...seen], null, 2));
