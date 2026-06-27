@@ -124,11 +124,21 @@ async function bridgeState() {
 
   // marks (the gifting contract)
   const markEvs = await marking.queryFilter(marking.filters.Marked(), 0, "latest").catch(() => []);
-  const recentMarks = markEvs.map((e) => ({
-    "@type": "Mark", from: e.args.from, to: e.args.to,
-    amount: ethers.formatEther(e.args.amount), identity: e.args.identity, reason: e.args.reason,
-    evmBlock: e.blockNumber,
-  })).reverse();
+  const recentMarks = markEvs.map((e) => {
+    // identity carries who gave + who received as did:nostr (JSON); legacy marks
+    // stored a single did string or a plain label.
+    let byDid = null, toDid = null;
+    const idf = e.args.identity || "";
+    try { const j = JSON.parse(idf); byDid = j.by || null; toDid = j.to || null; }
+    catch { if (/^did:nostr:/.test(idf)) byDid = idf; }
+    return {
+      "@type": "Mark",
+      "@id": `urn:mark:${e.transactionHash}:${e.index ?? 0}`,
+      from: e.args.from, to: e.args.to, byDid, toDid,
+      amount: ethers.formatEther(e.args.amount), reason: e.args.reason,
+      identity: idf, evmBlock: e.blockNumber, evmTx: e.transactionHash,
+    };
+  }).reverse();
   const totals = {};
   for (const e of markEvs) totals[e.args.to] = (totals[e.args.to] || 0n) + e.args.amount;
   const leaderboard = Object.entries(totals)

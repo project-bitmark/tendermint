@@ -124,6 +124,20 @@ profile, its **name + picture** — resolved client-side from public Nostr relay
 (`relay.nostr.band`, `relay.damus.io`, `nos.lol`) over WebSocket, cached. The
 validator's Agent DID resolves the same way. Read-only: the UI never publishes.
 
+### Mark a `did:nostr` (social gifting + linked data)
+
+You can give a mark to a **`did:nostr`**, not just a `0x…` address. Because
+`did:nostr` is x-only (BIP340, even-Y), it maps to exactly one **canonical EVM
+address** (`ethers.computeAddress("0x02"+pubkey)`), and the holder's key —
+normalised to even-Y on login — controls it. So `did:nostr ↔ EVM address` is a
+clean bijection (the same even-Y rule as the Bitcoin reserve).
+
+Each mark records **both** identities (`{by, to}` as `did:nostr`) in the contract's
+`identity` field; the feed renders **giver → receiver** with both avatars, and each
+mark is exposed as a linked-data resource (`@type: Mark`, `@id: urn:mark:<tx>:<i>`,
+`byDid`/`toDid`) in `/bridge-state.jsonld`. NIP-07/extension marks keep the real
+`did:nostr` as the giver even though signing uses a session key.
+
 ## Bridge UI (no build)
 
 `npm run ui` starts a zero-dependency Node server (`server.js`) that serves the

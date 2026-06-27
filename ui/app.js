@@ -66,6 +66,16 @@ const profileCache = new Map();
 const didToHex = (id) => { const m = String(id || "").match(/(?:did:nostr:)?([0-9a-f]{64})/i); return m ? m[1].toLowerCase() : null; };
 const avatarUrl = (hex, prof) => prof?.picture || `https://api.dicebear.com/9.x/identicon/svg?seed=${hex}`;
 
+// did:nostr is x-only (BIP340 even-Y), so it maps to exactly one EVM address,
+// and the holder's key (normalized to even-Y) controls it. One identity, two chains.
+const SECP_N = BigInt("0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141");
+const evenYKey = (priv) => {
+  const hex = priv.startsWith("0x") ? priv : "0x" + priv;
+  return new ethers.SigningKey(hex).compressedPublicKey.startsWith("0x03")
+    ? "0x" + (SECP_N - BigInt(hex)).toString(16).padStart(64, "0") : hex;
+};
+const didToEvmAddress = (hex) => ethers.computeAddress("0x02" + hex); // even-Y pubkey -> address
+
 function resolveProfile(hex) {
   if (profileCache.has(hex)) return profileCache.get(hex);
   const p = new Promise((resolve) => {
@@ -121,25 +131,24 @@ function renderMarks(marks) {
   const tb = $("[data-marks]");
   tb.innerHTML = "";
   const pks = new Set();
+  const who = (did, addr) => {
+    const hex = did && didToHex(did);
+    if (hex) {
+      pks.add(hex);
+      return `<span class="who" data-pk="${hex}" title="${esc("did:nostr:" + hex)}"><img class="av" src="${avatarUrl(hex)}" alt=""><span class="idname">${short("did:nostr:" + hex, 10)}</span></span>`;
+    }
+    return `<code class="sm">${short(addr, 5)}</code>`;
+  };
   if (!m.recent?.length) {
-    tb.innerHTML = `<tr class="empty"><td colspan="3">no marks yet</td></tr>`;
+    tb.innerHTML = `<tr class="empty"><td colspan="3">no marks yet — give one above</td></tr>`;
   } else {
     for (const k of m.recent) {
+      const byDid = k.byDid || (didToHex(k.identity) ? k.identity : null); // legacy fallback
       const tr = document.createElement("tr");
-      let tag = "";
-      if (k.identity) {
-        const hex = didToHex(k.identity);
-        if (hex) {
-          pks.add(hex);
-          tag = ` <span class="idtag who" data-pk="${hex}" title="did:nostr:${hex}"><img class="av" src="${avatarUrl(hex)}" alt=""><span class="idname">${short("did:nostr:" + hex, 12)}</span></span>`;
-        } else {
-          tag = ` <span class="idtag">${esc(k.identity)}</span>`;
-        }
-      }
       tr.innerHTML =
-        `<td class="sm"><code>${short(k.from, 5)}</code> → <code>${short(k.to, 5)}</code></td>` +
+        `<td class="pair">${who(byDid, k.from)} <span class="arrow">→</span> ${who(k.toDid, k.to)}</td>` +
         `<td class="amt"><b>${fmtAmount(k.amount)}</b> wBTMK</td>` +
-        `<td>${esc(k.reason)}${tag}</td>`;
+        `<td>${esc(k.reason)}</td>`;
       tb.appendChild(tr);
     }
   }
@@ -199,8 +208,9 @@ async function loadAccount() {
   if (!acct) return;
   did = acct["@id"] || (acct.pubkey ? `did:nostr:${acct.pubkey}` : null);
   if (acct.privkey) {
-    // guest/key login: the nostr key itself is the EVM signer (same secp256k1)
-    wallet = new ethers.Wallet(acct.privkey.startsWith("0x") ? acct.privkey : "0x" + acct.privkey, provider);
+    // guest/key login: the nostr key itself is the EVM signer (same secp256k1),
+    // normalized to even-Y so wallet.address == the address derived from its did:nostr
+    wallet = new ethers.Wallet(evenYKey(acct.privkey), provider);
     sessionMode = false;
   } else {
     // NIP-07 extension (schnorr only): sign EVM with a session key; identity stays
@@ -308,12 +318,19 @@ async function submitMark(e) {
   e.preventDefault();
   if (!wallet) return connect();
   const fd = new FormData(e.target);
-  const to = (fd.get("to") || "").trim();
+  const input = (fd.get("to") || "").trim();
   const reason = (fd.get("reason") || "").trim();
   let amount;
   try { amount = ethers.parseEther(String(fd.get("amount") || "0")); } catch { return markStatus("bad amount", "bad"); }
-  if (!ethers.isAddress(to)) return markStatus("enter a valid 0x recipient", "bad");
+  // recipient may be a did:nostr (or hex pubkey) -> derive their canonical EVM
+  // address, or a raw 0x address
+  let toAddr, toDid = null;
+  const rxHex = didToHex(input);
+  if (rxHex) { toAddr = didToEvmAddress(rxHex); toDid = "did:nostr:" + rxHex; }
+  else if (ethers.isAddress(input)) { toAddr = input; }
+  else return markStatus("enter a 0x address or did:nostr:…", "bad");
   if (amount <= 0n) return markStatus("amount must be > 0", "bad");
+  const identity = JSON.stringify({ by: did, to: toDid }); // who gave, who received
   try {
     await ensureFunded(amount);
     const token = new ethers.Contract(latest.sidechain.token.address, ERC20, wallet);
@@ -321,8 +338,8 @@ async function submitMark(e) {
     if ((await token.allowance(wallet.address, latest.marks.contract)) < amount) {
       markStatus("approving…"); await (await token.approve(latest.marks.contract, ethers.MaxUint256)).wait(1);
     }
-    markStatus("signing mark…");
-    const r = await (await marking.mark(to, amount, did || "", reason)).wait(1);
+    markStatus(toDid ? `signing mark → ${short(toDid, 14)}…` : "signing mark…");
+    const r = await (await marking.mark(toAddr, amount, identity, reason)).wait(1);
     markStatus(`marked ✓ (block #${r.blockNumber})`, "ok");
     e.target.reset();
     await refreshYou();

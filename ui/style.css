@@ -125,6 +125,10 @@ code.wrap { word-break: break-all; }
 .idtag { font-size: .72rem; color: #8250df; background: #f3eefc; border: 1px solid #d8c6f5;
   border-radius: 999px; padding: .05rem .45rem; margin-left: .4rem; white-space: nowrap; }
 .idtag.who { display: inline-flex; align-items: center; gap: .3rem; padding: .1rem .5rem .1rem .15rem; }
+.pair { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; }
+.pair .arrow { color: var(--muted); }
+.who { display: inline-flex; align-items: center; gap: .3rem; background: #f3eefc; border: 1px solid #d8c6f5;
+  border-radius: 999px; padding: .1rem .5rem .1rem .15rem; font-size: .75rem; color: #8250df; white-space: nowrap; }
 .av { width: 1.05rem; height: 1.05rem; border-radius: 50%; background: #fff; border: 1px solid #d8c6f5; vertical-align: middle; }
 .av.lg { width: 1.7rem; height: 1.7rem; }
 .agent-profile { display: flex; align-items: center; gap: .5rem; margin: 0 0 .6rem; }
