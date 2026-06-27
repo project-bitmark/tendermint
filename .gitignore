@@ -2,6 +2,8 @@
 evm/node_modules/
 # peg watcher runtime state (processed txids)
 evm/peg-state.json
+# generated UI screenshot
+ui/preview.png
 # Foundry artifacts
 evm/out/
 evm/cache/

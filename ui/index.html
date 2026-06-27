@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bitmark ⇄ wBTMK Bridge</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Bitmark&nbsp;<span class="arrow">⇄</span>&nbsp;wBTMK&nbsp;Bridge</h1>
+    <div class="status">
+      <span class="dot" data-state-dot></span>
+      <span data-state-label>connecting…</span>
+      <span class="sep">·</span>
+      L1 block <b data-bind="l1.tip">—</b>
+      <span class="sep">·</span>
+      sidechain #<b data-bind="sidechain.height">—</b>
+    </div>
+  </header>
+
+  <main class="grid">
+    <!-- island: Bitmark L1 reserve -->
+    <section class="card" aria-labelledby="reserve-h">
+      <h2 id="reserve-h">Bitmark L1 · Reserve</h2>
+      <p class="muted">Send BTMK here to mint wBTMK on the sidechain.</p>
+      <div class="addr" data-copy>
+        <code data-bind="l1.reserveAddress">—</code>
+        <button class="copy" title="copy">⧉</button>
+      </div>
+      <dl class="kv">
+        <dt>Locked balance</dt>
+        <dd><b data-bind="l1.balanceBTMK" data-fmt="amount">—</b> BTMK</dd>
+        <dt>Pending (0-conf)</dt>
+        <dd><span data-bind="l1.pending" data-fmt="amount">—</span> BTMK</dd>
+      </dl>
+    </section>
+
+    <!-- island: EVM sidechain -->
+    <section class="card" aria-labelledby="side-h">
+      <h2 id="side-h">Tendermint · EVM Sidechain</h2>
+      <dl class="kv">
+        <dt>Chain ID</dt><dd data-bind="sidechain.chainId">—</dd>
+        <dt>Token</dt><dd><span data-bind="sidechain.token.symbol">wBTMK</span> <code class="sm wrap" data-bind="sidechain.token.address">—</code></dd>
+        <dt>Total supply</dt><dd><b data-bind="sidechain.token.totalSupply" data-fmt="amount">—</b> wBTMK</dd>
+        <dt>Recipient</dt><dd><code class="sm wrap" data-bind="sidechain.recipient.address">—</code></dd>
+        <dt>Recipient balance</dt><dd><b data-bind="sidechain.recipient.balance" data-fmt="amount">—</b> wBTMK</dd>
+      </dl>
+    </section>
+
+    <!-- island: did:nostr identity -->
+    <section class="card" aria-labelledby="id-h">
+      <h2 id="id-h">Validator Identity <span class="badge" data-attested hidden>attested ✓</span></h2>
+      <dl class="kv">
+        <dt>Agent DID</dt><dd><code class="sm wrap" data-bind="identity.did">—</code></dd>
+        <dt>Consensus key</dt><dd><code class="sm wrap" data-bind="identity.validatorConsensusKeyHex">—</code></dd>
+      </dl>
+      <p class="muted">The <code>did:nostr</code> agent runs the validator and controls the L1 reserve.</p>
+    </section>
+
+    <!-- island: bridge activity -->
+    <section class="card wide" aria-labelledby="act-h">
+      <h2 id="act-h">Bridge Activity <span class="count" data-count>0</span></h2>
+      <table class="feed">
+        <thead><tr><th>Amount</th><th>Recipient</th><th>Bitmark L1 txid</th><th>EVM block</th></tr></thead>
+        <tbody data-feed>
+          <tr class="empty"><td colspan="4">no deposits yet — send BTMK to the reserve address</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <span>state: <a href="/bridge-state.jsonld">/bridge-state.jsonld</a> (JSON-LD)</span>
+    <span class="muted" data-bind="generatedAt">—</span>
+  </footer>
+
+  <template id="row">
+    <tr>
+      <td class="amt"><b></b> wBTMK</td>
+      <td><code class="sm recip"></code></td>
+      <td><a class="txid sm" target="_blank" rel="noopener"></a></td>
+      <td class="blk"></td>
+    </tr>
+  </template>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

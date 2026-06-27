@@ -76,6 +76,19 @@ demo); raise it for real value.
 Still TODO for a full loop: peg-out watcher (burn → release BTMK from the reserve)
 and per-deposit recipient mapping (e.g. `OP_RETURN`-encoded EVM address).
 
+## Bridge UI (no build)
+
+`npm run ui` starts a zero-dependency Node server (`server.js`) that serves the
+static `../ui/` dashboard and a live **`/bridge-state.jsonld`** endpoint
+aggregating the sidechain, the Bitmark L1 reserve (via ElectrumX), and the DID
+document. Open http://localhost:8080.
+
+The client is browser-native ESM with **no build step**: semantic HTML with
+`data-bind` islands hydrated by one small module (`ui/app.js`) that polls the
+JSON-LD every 4s. Same-origin, so no CORS. Shows the reserve + locked balance,
+wBTMK supply/balances, the attested did:nostr validator identity, and a live feed
+of peg-in deposits (each linking its Bitmark L1 txid).
+
 ## The peg is a STUB
 
 `wBTMK.pegMint` is gated by a single `owner` (the "peg operator"). In production

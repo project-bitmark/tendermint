@@ -6,7 +6,8 @@
   "description": "PoC: Tendermint/EVM sidechain for Bitmark with a stubbed wBTMK peg",
   "scripts": {
     "demo": "node demo.js",
-    "watch": "node peg-watcher.js"
+    "watch": "node peg-watcher.js",
+    "ui": "node server.js"
   },
   "dependencies": {
     "ethers": "^6.13.0"
