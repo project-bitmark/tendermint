@@ -1,0 +1,51 @@
+{
+  "@context": [
+    "https://w3id.org/did",
+    "https://w3id.org/nostr/context"
+  ],
+  "id": "did:nostr:309b30c612bb871a7cc9eef950134863b2cd2dd30b75dbdc420058c6c39b3dda",
+  "type": "DIDNostr",
+  "verificationMethod": [
+    {
+      "id": "did:nostr:309b30c612bb871a7cc9eef950134863b2cd2dd30b75dbdc420058c6c39b3dda#key1",
+      "type": "Multikey",
+      "controller": "did:nostr:309b30c612bb871a7cc9eef950134863b2cd2dd30b75dbdc420058c6c39b3dda",
+      "publicKeyMultibase": "fe70102309b30c612bb871a7cc9eef950134863b2cd2dd30b75dbdc420058c6c39b3dda"
+    },
+    {
+      "id": "did:nostr:309b30c612bb871a7cc9eef950134863b2cd2dd30b75dbdc420058c6c39b3dda#cometbft-consensus",
+      "type": "Multikey",
+      "controller": "did:nostr:309b30c612bb871a7cc9eef950134863b2cd2dd30b75dbdc420058c6c39b3dda",
+      "publicKeyMultibase": "fed019d25bf97cb45fe9707ad7cdadef66045eebf7c347cd4b1ff72e0d061860f267f"
+    }
+  ],
+  "authentication": [
+    "#key1"
+  ],
+  "assertionMethod": [
+    "#key1",
+    "#cometbft-consensus"
+  ],
+  "service": [
+    {
+      "id": "did:nostr:309b30c612bb871a7cc9eef950134863b2cd2dd30b75dbdc420058c6c39b3dda#bitmark-evm-validator",
+      "type": "TendermintValidator",
+      "serviceEndpoint": {
+        "chainId": "evmos_9000-1",
+        "evmChainId": 9000,
+        "consensusKeyType": "Ed25519",
+        "consensusPubkeyHex": "9d25bf97cb45fe9707ad7cdadef66045eebf7c347cd4b1ff72e0d061860f267f",
+        "consensusAddressHex": "5B3F6780326A7EDAE019A9912E1A0F83B5D07A1B",
+        "rpc": "http://localhost:26657",
+        "evmRpc": "http://localhost:8545",
+        "attestation": {
+          "type": "validator-key-attestation",
+          "signedBy": "#key1",
+          "nostrEventKind": 30100,
+          "nostrEventId": "121739b0dd5b1e543c2e8132c96a95c40c6b856d64c01bd7b2b21ac2f435d440",
+          "file": "evm/validator-attestation.json"
+        }
+      }
+    }
+  ]
+}

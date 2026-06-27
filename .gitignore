@@ -1,0 +1,7 @@
+# JS deps / build
+evm/node_modules/
+# Foundry artifacts
+evm/out/
+evm/cache/
+# local editor / harness
+.claude/settings.local.json

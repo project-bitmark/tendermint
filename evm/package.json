@@ -1,0 +1,13 @@
+{
+  "name": "bitmark-evm-poc",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "PoC: Tendermint/EVM sidechain for Bitmark with a stubbed wBTMK peg",
+  "scripts": {
+    "demo": "node demo.js"
+  },
+  "dependencies": {
+    "ethers": "^6.13.0"
+  }
+}
