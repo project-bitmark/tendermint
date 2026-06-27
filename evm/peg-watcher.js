@@ -58,6 +58,34 @@ function depositSats(tx) {
   return sats;
 }
 
+// read a recipient EVM address from an OP_RETURN output (6a14<20 bytes>), if present
+function opReturnRecipient(tx) {
+  for (const o of tx.vout || []) {
+    const hex = (o.scriptPubKey?.hex || "").toLowerCase();
+    if (!hex.startsWith("6a")) continue;
+    const op = parseInt(hex.slice(2, 4), 16);
+    if (op >= 0x4c) continue; // skip OP_PUSHDATA1+ for simplicity
+    const data = hex.slice(4, 4 + op * 2);
+    if (/^[0-9a-f]{40}$/.test(data)) return ethers.getAddress("0x" + data); // 20-byte address
+  }
+  return null;
+}
+
+// true if any input is spent from the reserve itself (i.e. this is our own
+// peg-out change returning, not a real inbound deposit)
+async function isOwnChange(tx, e) {
+  for (const vin of tx.vin || []) {
+    if (!vin.txid) continue;
+    try {
+      const p = await e.request("blockchain.transaction.get", [vin.txid, true]);
+      const o = (p.vout || [])[vin.vout];
+      const addrs = o?.scriptPubKey?.addresses || (o?.scriptPubKey?.address ? [o.scriptPubKey.address] : []);
+      if (addrs.includes(RESERVE)) return true;
+    } catch {}
+  }
+  return false;
+}
+
 async function main() {
   console.log(`peg-watcher: ${RESERVE} (Bitmark) -> wBTMK ${WBTMK}`);
   console.log(`operator ${wallet.address}, recipient ${USER}, min_conf ${MIN_CONF}`);
@@ -78,12 +106,15 @@ async function main() {
       const tx = await e.request("blockchain.transaction.get", [tx_hash, true]);
       const sats = depositSats(tx);
       if (sats <= 0n) { seen.add(tx_hash); continue; } // not an inbound deposit
+      if (await isOwnChange(tx, e)) { seen.add(tx_hash); continue; } // our own peg-out change
       const amount = sats * SATS_TO_WEI;
-      console.log(`\n[deposit] ${tx_hash} conf=${conf} ${Number(sats) / 1e8} BTMK -> mint ${ethers.formatEther(amount)} wBTMK`);
+      const recipient = opReturnRecipient(tx) || USER; // OP_RETURN-encoded EVM addr, else default
+      const via = opReturnRecipient(tx) ? "OP_RETURN" : "default";
+      console.log(`\n[deposit] ${tx_hash} conf=${conf} ${Number(sats) / 1e8} BTMK -> mint ${ethers.formatEther(amount)} wBTMK to ${recipient} (${via})`);
       try {
-        const txr = await (await wbtmk.pegMint(USER, amount, tx_hash)).wait(1);
+        const txr = await (await wbtmk.pegMint(recipient, amount, tx_hash)).wait(1);
         seen.add(tx_hash); persist();
-        console.log(`  minted in block #${txr.blockNumber} (final). recipient wBTMK: ${ethers.formatEther(await wbtmk.balanceOf(USER))}`);
+        console.log(`  minted in block #${txr.blockNumber} (final). recipient wBTMK: ${ethers.formatEther(await wbtmk.balanceOf(recipient))}`);
       } catch (err) {
         console.error(`  pegMint failed: ${err.shortMessage || err.message}`);
       }

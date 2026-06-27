@@ -73,6 +73,12 @@ Proven live: a real **0.8 BTMK** deposit (`7613b651…54268e12`) was detected
 L1 txid recorded in the `PegMint` event. `MIN_CONF=0` mints on first-seen (snappy
 demo); raise it for real value.
 
+**Per-deposit recipient (`OP_RETURN`).** A depositor can encode their EVM address
+in an `OP_RETURN` output; the watcher reads it and mints to *that* address, so
+anyone bridges to their own address rather than a fixed one. `deposit.js` builds
+such a deposit: `SENDER_PK=<btmk-hex> node deposit.js <amount-BTMK> <0xEvm>`. The
+watcher also skips the reserve's own peg-out change (not a real inbound deposit).
+
 ## Peg-out: release BTMK back to L1 (working — full round-trip)
 
 `redeem-watcher.js` closes the loop. It watches wBTMK `PegBurn` events and, for
@@ -91,8 +97,15 @@ Proven live, full round-trip: 0.8 BTMK in → 0.8 wBTMK → burn 0.5 →
 **0.5 BTMK released** on L1 (`a4308960…d3145c`), 0.299 change back to the reserve.
 The UI feed shows both directions, each linking its Bitmark L1 txid.
 
-Still TODO: per-deposit recipient mapping (e.g. `OP_RETURN`-encoded EVM address);
-multi-burn UTXO chaining before the first release confirms.
+Still TODO: multi-burn UTXO chaining before the first release confirms.
+
+## Identity resolution in Marks (read-only)
+
+Marks tagged with a `did:nostr` identity are rendered with a deterministic avatar
+(dicebear, seeded by the pubkey) and, where the pubkey has a published kind:0
+profile, its **name + picture** — resolved client-side from public Nostr relays
+(`relay.nostr.band`, `relay.damus.io`, `nos.lol`) over WebSocket, cached. The
+validator's Agent DID resolves the same way. Read-only: the UI never publishes.
 
 ## Bridge UI (no build)
 

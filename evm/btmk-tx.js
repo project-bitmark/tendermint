@@ -73,7 +73,7 @@ export function buildSignedTx({ utxos, privHex, outputs, changeAddress, fee = 10
   const priv = Buffer.from(d.toString(16).padStart(64, "0"), "hex");
   const reserveScript = p2pkhScriptFromHash160(hash160(pub));
 
-  const outs = outputs.map((o) => ({ value: BigInt(o.value), script: o.script || scriptForAddress(o.address) }));
+  const outs = outputs.map((o) => ({ value: BigInt(o.value ?? 0), script: o.script || scriptForAddress(o.address) }));
   const need = outs.reduce((s, o) => s + o.value, 0n) + BigInt(fee);
 
   // select utxos

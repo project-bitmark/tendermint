@@ -60,17 +60,82 @@ function renderFeed(activity = []) {
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
+// ---- nostr identity resolution (read-only) ----
+const RELAYS = ["wss://relay.nostr.band", "wss://relay.damus.io", "wss://nos.lol"];
+const profileCache = new Map();
+const didToHex = (id) => { const m = String(id || "").match(/(?:did:nostr:)?([0-9a-f]{64})/i); return m ? m[1].toLowerCase() : null; };
+const avatarUrl = (hex, prof) => prof?.picture || `https://api.dicebear.com/9.x/identicon/svg?seed=${hex}`;
+
+function resolveProfile(hex) {
+  if (profileCache.has(hex)) return profileCache.get(hex);
+  const p = new Promise((resolve) => {
+    let left = RELAYS.length, best = null, done = false;
+    const finish = () => { if (!done) { done = true; resolve(best); } };
+    for (const url of RELAYS) {
+      let ws; try { ws = new WebSocket(url); } catch { if (--left === 0) finish(); continue; }
+      const t = setTimeout(() => { try { ws.close(); } catch {} if (--left === 0) finish(); }, 5000);
+      ws.onopen = () => ws.send(JSON.stringify(["REQ", "p", { kinds: [0], authors: [hex], limit: 1 }]));
+      ws.onmessage = (m) => {
+        const o = JSON.parse(m.data);
+        if (o[0] === "EVENT") { try { best = JSON.parse(o[2].content); } catch {} clearTimeout(t); try { ws.close(); } catch {} finish(); }
+        else if (o[0] === "EOSE") { clearTimeout(t); try { ws.close(); } catch {} if (--left === 0) finish(); }
+      };
+      ws.onerror = () => { clearTimeout(t); if (--left === 0) finish(); };
+    }
+  });
+  profileCache.set(hex, p);
+  return p;
+}
+
+function patchProfile(hex) {
+  resolveProfile(hex).then((prof) => {
+    for (const el of $$(`.who[data-pk="${hex}"]`)) {
+      const img = $(".av", el), name = $(".idname", el);
+      if (prof?.picture && img) img.src = prof.picture;
+      const nm = prof?.display_name || prof?.name;
+      if (nm && name) name.textContent = nm;
+    }
+  });
+}
+
+let agentDone = false;
+function maybeResolveAgent() {
+  if (agentDone || !latest?.identity?.did) return;
+  const hex = didToHex(latest.identity.did);
+  if (!hex) return;
+  agentDone = true;
+  const wrap = $("[data-agent]"), img = $("[data-agent-av]"), name = $("[data-agent-name]");
+  if (img) img.src = avatarUrl(hex);
+  if (name) name.textContent = short("did:nostr:" + hex, 14);
+  if (wrap) wrap.hidden = false;
+  resolveProfile(hex).then((prof) => {
+    if (prof?.picture && img) img.src = prof.picture;
+    const nm = prof?.display_name || prof?.name;
+    if (nm && name) name.textContent = nm;
+  });
+}
+
 function renderMarks(marks) {
   const m = marks || { recent: [], leaderboard: [] };
   $("[data-marks-count]").textContent = m.total ?? (m.recent?.length || 0);
   const tb = $("[data-marks]");
   tb.innerHTML = "";
+  const pks = new Set();
   if (!m.recent?.length) {
     tb.innerHTML = `<tr class="empty"><td colspan="3">no marks yet</td></tr>`;
   } else {
     for (const k of m.recent) {
       const tr = document.createElement("tr");
-      const tag = k.identity ? ` <span class="idtag">${esc(k.identity)}</span>` : "";
+      let tag = "";
+      if (k.identity) {
+        const hex = didToHex(k.identity);
+        if (hex) {
+          pks.add(hex);
+          tag = ` <span class="idtag who" data-pk="${hex}" title="did:nostr:${hex}"><img class="av" src="${avatarUrl(hex)}" alt=""><span class="idname">${short("did:nostr:" + hex, 12)}</span></span>`;
+        } else {
+          tag = ` <span class="idtag">${esc(k.identity)}</span>`;
+        }
+      }
       tr.innerHTML =
         `<td class="sm"><code>${short(k.from, 5)}</code> → <code>${short(k.to, 5)}</code></td>` +
         `<td class="amt"><b>${fmtAmount(k.amount)}</b> wBTMK</td>` +
@@ -78,6 +143,7 @@ function renderMarks(marks) {
       tb.appendChild(tr);
     }
   }
+  for (const hex of pks) patchProfile(hex);
   const ol = $("[data-leaderboard]");
   ol.innerHTML = "";
   for (const r of (m.leaderboard || []).slice(0, 5)) {
@@ -102,6 +168,7 @@ async function tick() {
     hydrate(state);
     renderFeed(state.activity);
     renderMarks(state.marks);
+    maybeResolveAgent();
     setStatus(true);
   } catch {
     setStatus(false);

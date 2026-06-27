@@ -22,3 +22,11 @@ export const BTMK_P2PKH_VERSION = 0x55;
 export function p2pkhAddress(pubkeyHex, version = BTMK_P2PKH_VERSION) {
   return encodeBase58Check(version, hash160(Buffer.from(pubkeyHex, "hex")));
 }
+
+// OP_RETURN output script carrying up to 75 bytes (e.g. a 20-byte EVM address).
+export function opReturnScript(data) {
+  const d = Buffer.isBuffer(data) ? data : Buffer.from(String(data).replace(/^0x/, ""), "hex");
+  if (d.length > 75) throw new Error("opReturn data too long");
+  return Buffer.concat([Buffer.from([0x6a, d.length]), d]);
+}
+
