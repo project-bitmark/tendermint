@@ -47,6 +47,35 @@ WBTMK=<deployed-address> npm run demo
 The deployer key above is the well-known evmos **local test** key (`mykey`).
 Test-only — never use on a real network.
 
+## Real peg-in from Bitmark L1 (working)
+
+`peg-watcher.js` turns the stub into a real (single-operator) peg-in against the
+**live Bitmark network**, via the public ElectrumX server `electrum.bitmark.rocks:50002`:
+
+- `electrum.js` — tiny TLS ElectrumX client + address→scripthash (Bitmark = standard
+  base58check P2PKH, version byte `0x55`).
+- `btmk.js` — Bitmark address helpers (hash160, base58check, P2PKH).
+- `peg-watcher.js` — watches a reserve address; on each new deposit it converts
+  sats→wBTMK (8dp→18dp, ×10¹⁰) and calls `pegMint(recipient, amount, btmkTxid)`,
+  committing the real L1 txid on-chain. Idempotent via `peg-state.json`.
+
+The reserve address is derived from the agent's **public** key (so the same
+`did:nostr` agent controls it):
+
+```bash
+RESERVE_ADDR=bV7H8TVVfvcstcoftiZ9cJuDYkaG9FSVwG \
+USER_ADDR=0xC6Fe5D33615a1C52c08018c47E8Bc53646A0E101 \
+WBTMK=<wBTMK address> MIN_CONF=0 npm run watch
+```
+
+Proven live: a real **0.8 BTMK** deposit (`7613b651…54268e12`) was detected
+0-conf and minted **0.8 wBTMK** to the recipient, final in one ~3s block, with the
+L1 txid recorded in the `PegMint` event. `MIN_CONF=0` mints on first-seen (snappy
+demo); raise it for real value.
+
+Still TODO for a full loop: peg-out watcher (burn → release BTMK from the reserve)
+and per-deposit recipient mapping (e.g. `OP_RETURN`-encoded EVM address).
+
 ## The peg is a STUB
 
 `wBTMK.pegMint` is gated by a single `owner` (the "peg operator"). In production

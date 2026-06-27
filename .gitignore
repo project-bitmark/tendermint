@@ -1,5 +1,7 @@
 # JS deps / build
 evm/node_modules/
+# peg watcher runtime state (processed txids)
+evm/peg-state.json
 # Foundry artifacts
 evm/out/
 evm/cache/
