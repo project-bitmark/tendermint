@@ -14,3 +14,5 @@ evm/cache/
 .demo-pids
 # deployment-specific addresses (from deploy.sh)
 evm/deployment.json
+# pod publisher runtime state
+evm/pod-published.json

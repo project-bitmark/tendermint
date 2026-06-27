@@ -11,9 +11,11 @@
     "redeem": "node redeem-watcher.js",
     "burn": "node burn.js",
     "mark": "node mark.js",
+    "publish": "node pod-publisher.js",
     "ui": "node server.js"
   },
   "dependencies": {
+    "@noble/curves": "^1.9.7",
     "@noble/hashes": "^1.8.0",
     "@noble/secp256k1": "^2.3.0",
     "ethers": "^6.13.0"

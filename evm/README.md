@@ -138,6 +138,37 @@ mark is exposed as a linked-data resource (`@type: Mark`, `@id: urn:mark:<tx>:<i
 `byDid`/`toDid`) in `/bridge-state.jsonld`. NIP-07/extension marks keep the real
 `did:nostr` as the giver even though signing uses a session key.
 
+### Publish marks to a Solid pod (linked data, anywhere)
+
+`pod-publisher.js` mirrors each mark to a Solid pod as a dereferenceable JSON-LD
+resource, so the gifting graph is linked data anyone can GET or fork. It is
+**pod-agnostic** — point it at any [JSS](https://github.com/JavaScriptSolidServer/JavaScriptSolidServer)
+/ Solid server via env:
+
+```bash
+POD_BASE=https://your.pod POD_CONTAINER=/bitmark/marks/ \
+  UI_URL=http://localhost:8080 npm run publish
+```
+
+It authenticates with **NIP-98** signed by the agent key (`git config nostr.privkey`
+— the same `did:nostr` that runs the validator), so the agent owns the data it
+publishes. Resources go to `<POD_BASE><POD_CONTAINER><tx>_<i>.jsonld`; idempotent
+via `pod-published.json`. The agent needs Write on the container — grant it with an
+`.acl` (public Read, agent Read+Write), substituting your pod base:
+
+```json
+{ "@context": { "acl": "http://www.w3.org/ns/auth/acl#", "foaf": "http://xmlns.com/foaf/0.1/" },
+  "@graph": [
+    { "@id": "#agent", "@type": "acl:Authorization",
+      "acl:agent": { "@id": "did:nostr:309b30c612bb871a7cc9eef950134863b2cd2dd30b75dbdc420058c6c39b3dda" },
+      "acl:accessTo": { "@id": "<POD_BASE>/bitmark/" }, "acl:default": { "@id": "<POD_BASE>/bitmark/" },
+      "acl:mode": [ {"@id":"acl:Read"}, {"@id":"acl:Write"} ] },
+    { "@id": "#public", "@type": "acl:Authorization",
+      "acl:agentClass": { "@id": "foaf:Agent" },
+      "acl:accessTo": { "@id": "<POD_BASE>/bitmark/" }, "acl:default": { "@id": "<POD_BASE>/bitmark/" },
+      "acl:mode": [ {"@id":"acl:Read"} ] } ] }
+```
+
 ## Bridge UI (no build)
 
 `npm run ui` starts a zero-dependency Node server (`server.js`) that serves the
