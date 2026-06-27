@@ -95,6 +95,24 @@
       </div>
     </section>
 
+    <!-- island: bridge out (redeem flow) -->
+    <section class="card wide" aria-labelledby="out-h">
+      <h2 id="out-h">Bridge out <span class="subtitle">· wBTMK → BTMK</span></h2>
+      <p class="you" data-redeem-prompt>Connect to redeem wBTMK back to Bitmark L1.</p>
+      <div class="redeem-body" data-redeem-body hidden>
+        <form class="markform" data-redeemform>
+          <div class="mf-row">
+            <label class="grow">Bitmark L1 address<input name="btmk" placeholder="b… your Bitmark address" autocomplete="off"></label>
+            <label>Amount<span class="suffix"><input name="amount" type="number" step="0.0001" min="0" value="0.05"> wBTMK</span></label>
+          </div>
+          <div class="mf-actions">
+            <button type="submit">Redeem</button>
+            <span class="markstatus" data-redeemstatus></span>
+          </div>
+        </form>
+      </div>
+    </section>
+
     <!-- island: give a mark (wallet-connected action) -->
     <section class="card wide" aria-labelledby="give-h">
       <h2 id="give-h">Give a mark <span class="subtitle">· sign with your did:nostr key</span></h2>

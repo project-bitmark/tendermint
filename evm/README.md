@@ -91,6 +91,11 @@ from a configured `DEPOSITOR_PK` to the reserve with your address in `OP_RETURN`
 you then watch your wBTMK arrive. (Operator convenience; the real path is a user
 sending the OP_RETURN deposit from their own Bitmark wallet.)
 
+**Bridge out from the UI.** The "Bridge out" island redeems wBTMK → BTMK: enter an
+amount + your Bitmark L1 address → the connected key signs `pegBurn` → the
+redeem-watcher releases BTMK on L1, and the UI shows the release txid. The whole
+round-trip (in → use/give → out) is now doable in the browser, no scripts.
+
 ## Peg-out: release BTMK back to L1 (working — full round-trip)
 
 `redeem-watcher.js` closes the loop. It watches wBTMK `PegBurn` events and, for

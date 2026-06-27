@@ -233,6 +233,8 @@ async function refreshYou() {
   if (qr && reserve) qr.src = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(reserve)}`;
   const body = $("[data-deposit-body]"); if (body) body.hidden = false;
   const prompt = $("[data-deposit-prompt]"); if (prompt) prompt.hidden = true;
+  const rbody = $("[data-redeem-body]"); if (rbody) rbody.hidden = false;
+  const rprompt = $("[data-redeem-prompt]"); if (rprompt) rprompt.hidden = true;
 }
 
 const depStatus = (m, c = "") => { const el = $("[data-depstatus]"); el.textContent = m; el.className = "markstatus " + c; };
@@ -254,6 +256,34 @@ async function simulateDeposit() {
     }
     depStatus("L1 deposit sent; awaiting mint…");
   } catch (err) { depStatus("failed: " + (err.message || err), "bad"); }
+}
+
+// ---- bridge out (redeem) ----
+const REDEEM = ["function pegBurn(uint256 value, string btmkAddress)", "function balanceOf(address) view returns (uint256)"];
+const redeemStatus = (m, c = "") => { const el = $("[data-redeemstatus]"); el.textContent = m; el.className = "markstatus " + c; };
+async function submitRedeem(e) {
+  e.preventDefault();
+  if (!wallet) return connect();
+  const fd = new FormData(e.target);
+  const btmk = (fd.get("btmk") || "").trim();
+  let amount; try { amount = ethers.parseEther(String(fd.get("amount") || "0")); } catch { return redeemStatus("bad amount", "bad"); }
+  if (!/^b[1-9A-HJ-NP-Za-km-z]{25,40}$/.test(btmk)) return redeemStatus("enter a valid Bitmark (b…) address", "bad");
+  if (amount <= 0n) return redeemStatus("amount must be > 0", "bad");
+  try {
+    const token = new ethers.Contract(latest.sidechain.token.address, REDEEM, wallet);
+    if ((await token.balanceOf(wallet.address)) < amount) return redeemStatus("not enough wBTMK — bridge in or get test funds first", "bad");
+    redeemStatus("signing burn…");
+    const r = await (await token.pegBurn(amount, btmk)).wait(1);
+    redeemStatus(`burned ✓ (block #${r.blockNumber}) · releasing on L1…`);
+    refreshYou(); tick();
+    for (let i = 0; i < 25; i++) {
+      await new Promise((res) => setTimeout(res, 2500));
+      const st = await (await fetch("/bridge-state.jsonld", { cache: "no-store" })).json();
+      const a = (st.activity || []).find((x) => x.evmTx?.toLowerCase() === r.hash.toLowerCase());
+      if (a?.l1Txid) { redeemStatus(`released on Bitmark L1: ${short(a.l1Txid, 8)} ✓`, "ok"); tick(); return; }
+    }
+    redeemStatus("burned ✓ · release pending (watch the feed)");
+  } catch (err) { redeemStatus("failed: " + (err.shortMessage || err.message || err), "bad"); }
 }
 
 async function faucet() {
@@ -314,6 +344,7 @@ document.addEventListener("click", (e) => {
   if (e.target.closest("[data-dep-go]")) simulateDeposit();
 });
 $("[data-markform]").addEventListener("submit", submitMark);
+$("[data-redeemform]").addEventListener("submit", submitRedeem);
 
 // copy-to-clipboard island
 document.addEventListener("click", (e) => {

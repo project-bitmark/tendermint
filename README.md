@@ -65,6 +65,18 @@ npm run redeem   # peg-out: wBTMK burns       -> Bitmark releases
 npm run ui       # dashboard at http://localhost:8080
 ```
 
+Or, once the contracts are deployed, bring up the whole stack (chain + both
+watchers + UI) with one command and tear it down with another:
+
+```bash
+./scripts/demo-up.sh      # http://localhost:8080
+./scripts/demo-down.sh
+```
+
+In the UI you can connect a Nostr identity (xlogin), **bridge in** (deposit to
+your address), **give marks** (gift wBTMK with a reason, tagged by did:nostr), and
+**bridge out** (redeem to Bitmark L1) — the full round-trip, no scripts.
+
 Full details, the exact peg/identity/Marks flows, and the honest trust model are
 in **[`evm/README.md`](evm/README.md)**.
 
