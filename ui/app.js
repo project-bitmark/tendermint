@@ -1,5 +1,7 @@
-// Bridge UI — one small ESM island controller, no build, no deps.
-// Polls /bridge-state.jsonld and hydrates [data-bind] elements + the feed.
+// Bridge UI — one small ESM island controller, no build.
+// Polls /bridge-state.jsonld, hydrates [data-bind] islands, and (when a nostr
+// identity is connected via xlogin) lets you give a Mark, signed by the same key.
+import { ethers } from "https://esm.sh/ethers@6.13.4";
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 
@@ -90,11 +92,13 @@ function setStatus(ok) {
   $("[data-state-label]").textContent = ok ? "live" : "offline";
 }
 
+let latest = null;
 async function tick() {
   try {
     const r = await fetch("/bridge-state.jsonld", { cache: "no-store" });
     if (!r.ok) throw new Error(r.status);
     const state = await r.json();
+    latest = state;
     hydrate(state);
     renderFeed(state.activity);
     renderMarks(state.marks);
@@ -103,6 +107,103 @@ async function tick() {
     setStatus(false);
   }
 }
+
+// ---- wallet / give-a-mark (signed by the connected nostr key) ----
+const ERC20 = [
+  "function approve(address,uint256) returns (bool)",
+  "function allowance(address,address) view returns (uint256)",
+  "function balanceOf(address) view returns (uint256)",
+];
+const MARK = ["function mark(address to, uint256 amount, string identity, string reason)"];
+const provider = new ethers.JsonRpcProvider(location.origin + "/rpc");
+let wallet = null, did = null;
+const markStatus = (msg, cls = "") => { const el = $("[data-markstatus]"); el.textContent = msg; el.className = "markstatus " + cls; };
+
+function loadAccount() {
+  let acct;
+  try { acct = JSON.parse(localStorage.getItem("currentAccount") || "null"); } catch { acct = null; }
+  if (!acct) return;
+  did = acct["@id"] || (acct.pubkey ? `did:nostr:${acct.pubkey}` : null);
+  if (acct.privkey) {
+    wallet = new ethers.Wallet(acct.privkey.startsWith("0x") ? acct.privkey : "0x" + acct.privkey, provider);
+    refreshYou();
+  } else {
+    // NIP-07 extension: schnorr only, can't sign EVM
+    $("[data-you]").innerHTML = `Connected as <code class="sm">${short(did, 14)}</code> — but extension (NIP-07) keys can't sign EVM. Use a guest/key login to give marks.`;
+  }
+}
+
+async function refreshYou() {
+  if (!wallet) return;
+  $("[data-connect]").textContent = short(wallet.address, 5);
+  $("[data-marksubmit]").textContent = "Mark";
+  const token = new ethers.Contract(latest?.sidechain?.token?.address || ethers.ZeroAddress, ERC20, provider);
+  let bal = "0", gas = "0";
+  try { gas = ethers.formatEther(await provider.getBalance(wallet.address)); } catch {}
+  try { bal = ethers.formatEther(await token.balanceOf(wallet.address)); } catch {}
+  $("[data-you]").innerHTML =
+    `You: <code class="sm">${short(did, 14)}</code> · <code class="sm">${short(wallet.address, 6)}</code> · ` +
+    `<b>${fmtAmount(bal)}</b> wBTMK · ${fmtAmount(gas)} gas ` +
+    `<button type="button" class="linkbtn" data-faucet>get test funds</button>`;
+}
+
+async function faucet() {
+  if (!wallet) return;
+  markStatus("requesting test funds…");
+  await fetch("/faucet", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ address: wallet.address }) });
+  await refreshYou();
+  markStatus("funded ✓", "ok");
+}
+
+async function ensureFunded(amount) {
+  const token = new ethers.Contract(latest.sidechain.token.address, ERC20, wallet);
+  const gas = await provider.getBalance(wallet.address);
+  const bal = await token.balanceOf(wallet.address);
+  if (gas < ethers.parseEther("0.01") || bal < amount) {
+    markStatus("getting test funds…");
+    await fetch("/faucet", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ address: wallet.address }) });
+  }
+}
+
+async function submitMark(e) {
+  e.preventDefault();
+  if (!wallet) return connect();
+  const fd = new FormData(e.target);
+  const to = (fd.get("to") || "").trim();
+  const reason = (fd.get("reason") || "").trim();
+  let amount;
+  try { amount = ethers.parseEther(String(fd.get("amount") || "0")); } catch { return markStatus("bad amount", "bad"); }
+  if (!ethers.isAddress(to)) return markStatus("enter a valid 0x recipient", "bad");
+  if (amount <= 0n) return markStatus("amount must be > 0", "bad");
+  try {
+    await ensureFunded(amount);
+    const token = new ethers.Contract(latest.sidechain.token.address, ERC20, wallet);
+    const marking = new ethers.Contract(latest.marks.contract, MARK, wallet);
+    if ((await token.allowance(wallet.address, latest.marks.contract)) < amount) {
+      markStatus("approving…"); await (await token.approve(latest.marks.contract, ethers.MaxUint256)).wait(1);
+    }
+    markStatus("signing mark…");
+    const r = await (await marking.mark(to, amount, did || "", reason)).wait(1);
+    markStatus(`marked ✓ (block #${r.blockNumber})`, "ok");
+    e.target.reset();
+    await refreshYou();
+    tick();
+  } catch (err) {
+    markStatus("failed: " + (err.shortMessage || err.message || err), "bad");
+  }
+}
+
+function connect() {
+  if (window.xlogin?.login) window.xlogin.login();
+  else markStatus("xlogin unavailable", "bad");
+}
+
+document.addEventListener("xlogin", loadAccount);
+document.addEventListener("click", (e) => {
+  if (e.target.closest("[data-connect]")) { if (!wallet) connect(); }
+  if (e.target.closest("[data-faucet]")) faucet();
+});
+$("[data-markform]").addEventListener("submit", submitMark);
 
 // copy-to-clipboard island
 document.addEventListener("click", (e) => {
@@ -115,5 +216,5 @@ document.addEventListener("click", (e) => {
   });
 });
 
-tick();
+tick().then(loadAccount);
 setInterval(tick, 4000);

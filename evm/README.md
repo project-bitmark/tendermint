@@ -124,6 +124,21 @@ and a "most marked" leaderboard, all aggregated from `Marked` events in the same
 `/bridge-state.jsonld`. This is what the EVM sidechain buys you over L1: events you
 can index, per-recipient aggregates, instant finality — in ~40 lines of Solidity.
 
+### Give a mark from the browser (wallet connect)
+
+The **"Give a mark"** form lets you sign a mark client-side. You log in with
+[xlogin](https://github.com/melvincarvalho/xlogin) (Nostr); because nostr keys are
+secp256k1, the **same key is used as the evmos/EVM signer** (`ethers.Wallet`), and
+the mark is tagged with your `did:nostr`. One identity, nostr + EVM.
+
+Two small operator conveniences in `server.js` make it work with no CORS and no
+pre-funded account:
+- `POST /rpc` — same-origin JSON-RPC proxy (browser signs + sends without CORS).
+- `POST /faucet` — drips native gas + a little wBTMK to your derived address.
+
+NIP-07 *extension* logins can't sign EVM (schnorr ≠ ECDSA), so guest/key logins
+are the path. The signing key never leaves the browser.
+
 ## The peg is a STUB
 
 `wBTMK.pegMint` is gated by a single `owner` (the "peg operator"). In production

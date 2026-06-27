@@ -5,17 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Bitmark ⇄ wBTMK Bridge</title>
   <link rel="stylesheet" href="/style.css">
+  <script src="https://unpkg.com/xlogin"></script>
 </head>
 <body>
   <header class="topbar">
     <h1>Bitmark&nbsp;<span class="arrow">⇄</span>&nbsp;wBTMK&nbsp;Bridge</h1>
-    <div class="status">
-      <span class="dot" data-state-dot></span>
-      <span data-state-label>connecting…</span>
-      <span class="sep">·</span>
-      L1 block <b data-bind="l1.tip">—</b>
-      <span class="sep">·</span>
-      sidechain #<b data-bind="sidechain.height">—</b>
+    <div class="topbar-right">
+      <div class="status">
+        <span class="dot" data-state-dot></span>
+        <span data-state-label>connecting…</span>
+        <span class="sep">·</span>
+        L1 <b data-bind="l1.tip">—</b>
+        <span class="sep">·</span>
+        #<b data-bind="sidechain.height">—</b>
+      </div>
+      <button class="connect" data-connect>Connect</button>
     </div>
   </header>
 
@@ -68,6 +72,23 @@
         </tbody>
       </table>
     </section>
+    <!-- island: give a mark (wallet-connected action) -->
+    <section class="card wide" aria-labelledby="give-h">
+      <h2 id="give-h">Give a mark <span class="subtitle">· sign with your did:nostr key</span></h2>
+      <p class="you" data-you>Connect your nostr identity to give marks — the same key signs on the EVM sidechain.</p>
+      <form class="markform" data-markform>
+        <div class="mf-row">
+          <label class="grow">Recipient<input name="to" placeholder="0x… recipient address" autocomplete="off"></label>
+          <label>Amount<span class="suffix"><input name="amount" type="number" step="0.0001" min="0" value="0.1"> wBTMK</span></label>
+        </div>
+        <label class="full">Reason<input name="reason" placeholder="why are you marking them?" maxlength="120"></label>
+        <div class="mf-actions">
+          <button type="submit" data-marksubmit>Connect to mark</button>
+          <span class="markstatus" data-markstatus></span>
+        </div>
+      </form>
+    </section>
+
     <!-- island: marks (the gifting contract) -->
     <section class="card wide" aria-labelledby="marks-h">
       <h2 id="marks-h">Marks <span class="subtitle">· a currency for giving</span> <span class="count" data-marks-count>0</span></h2>

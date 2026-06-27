@@ -15,7 +15,11 @@ body {
 }
 .topbar h1 { font-size: 1.25rem; margin: 0; font-weight: 650; }
 .arrow { color: var(--accent); }
+.topbar-right { display: flex; align-items: center; gap: 1rem; }
 .status { color: var(--muted); font-size: .85rem; display: flex; align-items: center; gap: .4rem; }
+.connect { background: var(--ink); color: #fff; border: 0; border-radius: 8px; padding: .4rem .9rem;
+  font-size: .85rem; font-weight: 600; cursor: pointer; font-family: var(--mono); }
+.connect:hover { opacity: .9; }
 .status b { color: var(--ink); font-variant-numeric: tabular-nums; }
 .sep { opacity: .4; }
 .dot { width: .6rem; height: .6rem; border-radius: 50%; background: var(--muted); display: inline-block; }
@@ -70,6 +74,26 @@ code.wrap { word-break: break-all; }
 .flow { font-size: .72rem; font-weight: 600; border-radius: 999px; padding: .1rem .5rem; white-space: nowrap; }
 .flow.in { color: var(--ok); background: #e6f4ea; border: 1px solid #aedcb9; }
 .flow.out { color: #8250df; background: #f3eefc; border: 1px solid #d8c6f5; }
+
+/* give a mark form */
+.you { color: var(--muted); font-size: .88rem; margin: .2rem 0 .8rem; }
+.you b { color: var(--accent); }
+.linkbtn { background: none; border: 0; color: var(--link); cursor: pointer; font-size: .85rem; padding: 0; text-decoration: underline; }
+.markform { display: grid; gap: .6rem; }
+.mf-row { display: flex; gap: .8rem; flex-wrap: wrap; }
+.markform label { display: flex; flex-direction: column; gap: .25rem; font-size: .8rem; color: var(--muted); }
+.markform label.grow, .markform label.full { flex: 1; }
+.markform input { font: inherit; padding: .5rem .6rem; border: 1px solid var(--line); border-radius: 8px;
+  background: #fff; color: var(--ink); font-family: var(--mono); font-size: .85rem; }
+.markform .suffix { display: flex; align-items: center; gap: .4rem; font-family: var(--mono); color: var(--muted); }
+.markform .suffix input { width: 7rem; }
+.mf-actions { display: flex; align-items: center; gap: .8rem; }
+.mf-actions button { background: var(--accent); color: #fff; border: 0; border-radius: 8px;
+  padding: .5rem 1.1rem; font-weight: 600; cursor: pointer; }
+.mf-actions button:hover { opacity: .92; }
+.markstatus { font-size: .85rem; }
+.markstatus.ok { color: var(--ok); }
+.markstatus.bad { color: var(--bad); }
 
 /* marks */
 .subtitle { font-weight: 400; color: var(--muted); font-size: .85rem; }

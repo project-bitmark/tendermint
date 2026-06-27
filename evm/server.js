@@ -33,9 +33,17 @@ const ABI = [
 const MARKING = process.env.MARKING || "0x0F5575BC344f6F0b595A7B3a0bDEdE9a90859c6f";
 const MARK_ABI = ["event Marked(address indexed from, address indexed to, uint256 amount, string identity, string reason, uint256 index)"];
 
+const FAUCET_PK = process.env.FAUCET_PK || "0xE9B1D63E8ACD7FE676ACB43AFB390D4B0202DAB61ABEC9CF2A561E4BECB147DE";
+
 const provider = new ethers.JsonRpcProvider(RPC);
 const wbtmk = new ethers.Contract(WBTMK, ABI, provider);
 const marking = new ethers.Contract(MARKING, MARK_ABI, provider);
+const faucet = new ethers.Wallet(FAUCET_PK, provider);
+const faucetToken = new ethers.Contract(WBTMK, ["function pegMint(address,uint256,string)", "function balanceOf(address) view returns (uint256)"], faucet);
+
+const readBody = (req) => new Promise((resolve, reject) => {
+  let d = ""; req.on("data", (c) => (d += c)); req.on("end", () => resolve(d)); req.on("error", reject);
+});
 
 // reuse one Electrum connection; reconnect on demand
 let electrum = null;
@@ -77,7 +85,7 @@ async function bridgeState() {
   let redeem = {};
   try { redeem = JSON.parse(await readFile(join(__dir, "redeem-state.json"), "utf8")); } catch {}
   const activity = [
-    ...mints.map((e) => ({
+    ...mints.filter((e) => e.args.btmkTxid !== "faucet").map((e) => ({
       "@type": "PegIn", direction: "in",
       amount: ethers.formatEther(e.args.value),
       party: e.args.to, l1Txid: e.args.btmkTxid, l1Address: RESERVE,
@@ -133,6 +141,26 @@ const server = http.createServer(async (req, res) => {
       const body = JSON.stringify(await bridgeState(), null, 2);
       res.writeHead(200, { "content-type": "application/ld+json", "cache-control": "no-store" });
       return res.end(body);
+    }
+    // same-origin JSON-RPC proxy (lets the browser sign+send without CORS)
+    if (url.pathname === "/rpc" && req.method === "POST") {
+      const r = await fetch(RPC, { method: "POST", headers: { "content-type": "application/json" }, body: await readBody(req) });
+      res.writeHead(r.status, { "content-type": "application/json" });
+      return res.end(await r.text());
+    }
+    // faucet: drip native gas + a little wBTMK to a fresh (nostr-derived) address
+    if (url.pathname === "/faucet" && req.method === "POST") {
+      const { address } = JSON.parse((await readBody(req)) || "{}");
+      if (!ethers.isAddress(address)) { res.writeHead(400); return res.end(JSON.stringify({ error: "bad address" })); }
+      const out = { address, funded: {} };
+      if ((await provider.getBalance(address)) < ethers.parseEther("0.05")) {
+        const t = await faucet.sendTransaction({ to: address, value: ethers.parseEther("0.5") }); await t.wait(1); out.funded.gas = t.hash;
+      }
+      if ((await faucetToken.balanceOf(address)) < ethers.parseEther("0.5")) {
+        const t = await faucetToken.pegMint(address, ethers.parseEther("1"), "faucet"); await t.wait(1); out.funded.wbtmk = t.hash;
+      }
+      res.writeHead(200, { "content-type": "application/json" });
+      return res.end(JSON.stringify(out));
     }
     // static files from ui/
     let p = url.pathname === "/" ? "/index.html" : url.pathname;
