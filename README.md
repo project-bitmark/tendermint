@@ -14,6 +14,9 @@ identity, and an on-chain **"Marks"** gifting contract — all driven from a
 > The no-build dashboard: bridge in (deposit), give marks by `did:nostr`, bridge
 > out (redeem) — the full round-trip in the browser, over a live Bitmark bridge.
 
+**→ The design rationale, trust model, and honest limits are in
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).**
+
 ## Why
 
 The pieces exist separately — Tendermint+Bitcoin (Nomic, Babylon) and EVM+Bitcoin
