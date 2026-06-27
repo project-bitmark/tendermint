@@ -30,8 +30,12 @@ const ABI = [
   "event PegBurn(address indexed from, uint256 value, string btmkAddress)",
 ];
 
+const MARKING = process.env.MARKING || "0x0F5575BC344f6F0b595A7B3a0bDEdE9a90859c6f";
+const MARK_ABI = ["event Marked(address indexed from, address indexed to, uint256 amount, string identity, string reason, uint256 index)"];
+
 const provider = new ethers.JsonRpcProvider(RPC);
 const wbtmk = new ethers.Contract(WBTMK, ABI, provider);
+const marking = new ethers.Contract(MARKING, MARK_ABI, provider);
 
 // reuse one Electrum connection; reconnect on demand
 let electrum = null;
@@ -87,6 +91,19 @@ async function bridgeState() {
     })),
   ].sort((a, b) => b.evmBlock - a.evmBlock);
 
+  // marks (the gifting contract)
+  const markEvs = await marking.queryFilter(marking.filters.Marked(), 0, "latest").catch(() => []);
+  const recentMarks = markEvs.map((e) => ({
+    "@type": "Mark", from: e.args.from, to: e.args.to,
+    amount: ethers.formatEther(e.args.amount), identity: e.args.identity, reason: e.args.reason,
+    evmBlock: e.blockNumber,
+  })).reverse();
+  const totals = {};
+  for (const e of markEvs) totals[e.args.to] = (totals[e.args.to] || 0n) + e.args.amount;
+  const leaderboard = Object.entries(totals)
+    .map(([address, total]) => ({ address, total: ethers.formatEther(total) }))
+    .sort((a, b) => Number(b.total) - Number(a.total));
+
   const consKey = did?.service?.[0]?.serviceEndpoint?.consensusPubkeyHex || null;
   const attested = !!did?.service?.[0]?.serviceEndpoint?.attestation;
 
@@ -103,6 +120,7 @@ async function bridgeState() {
     },
     l1: { network: "Bitmark", reserveAddress: RESERVE, ...reserve },
     activity,
+    marks: { contract: MARKING, total: markEvs.length, recent: recentMarks, leaderboard },
   };
 }
 

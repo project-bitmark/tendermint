@@ -9,6 +9,7 @@
     "watch": "node peg-watcher.js",
     "redeem": "node redeem-watcher.js",
     "burn": "node burn.js",
+    "mark": "node mark.js",
     "ui": "node server.js"
   },
   "dependencies": {

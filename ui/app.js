@@ -56,6 +56,35 @@ function renderFeed(activity = []) {
   }
 }
 
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+function renderMarks(marks) {
+  const m = marks || { recent: [], leaderboard: [] };
+  $("[data-marks-count]").textContent = m.total ?? (m.recent?.length || 0);
+  const tb = $("[data-marks]");
+  tb.innerHTML = "";
+  if (!m.recent?.length) {
+    tb.innerHTML = `<tr class="empty"><td colspan="3">no marks yet</td></tr>`;
+  } else {
+    for (const k of m.recent) {
+      const tr = document.createElement("tr");
+      const tag = k.identity ? ` <span class="idtag">${esc(k.identity)}</span>` : "";
+      tr.innerHTML =
+        `<td class="sm"><code>${short(k.from, 5)}</code> → <code>${short(k.to, 5)}</code></td>` +
+        `<td class="amt"><b>${fmtAmount(k.amount)}</b> wBTMK</td>` +
+        `<td>${esc(k.reason)}${tag}</td>`;
+      tb.appendChild(tr);
+    }
+  }
+  const ol = $("[data-leaderboard]");
+  ol.innerHTML = "";
+  for (const r of (m.leaderboard || []).slice(0, 5)) {
+    const li = document.createElement("li");
+    li.innerHTML = `<code class="sm">${short(r.address, 6)}</code><span class="lb-amt">${fmtAmount(r.total)}</span>`;
+    ol.appendChild(li);
+  }
+}
+
 function setStatus(ok) {
   $("[data-state-dot]").className = "dot " + (ok ? "ok" : "bad");
   $("[data-state-label]").textContent = ok ? "live" : "offline";
@@ -68,6 +97,7 @@ async function tick() {
     const state = await r.json();
     hydrate(state);
     renderFeed(state.activity);
+    renderMarks(state.marks);
     setStatus(true);
   } catch {
     setStatus(false);

@@ -107,6 +107,23 @@ JSON-LD every 4s. Same-origin, so no CORS. Shows the reserve + locked balance,
 wBTMK supply/balances, the attested did:nostr validator identity, and a live feed
 of peg-in deposits (each linking its Bitmark L1 txid).
 
+## Marks — a smart contract demo ("a currency for giving")
+
+`src/Marking.sol` is a tiny contract that turns Bitmark's "marking" ethos into
+something programmable: **mark** someone by sending wBTMK *with a reason*, recorded
+on-chain as a structured, queryable gift — the social graph L1's plain payments
+can't express. It also carries an `identity` tag so you can mark a `did:nostr` /
+npub / name, not just an address.
+
+```bash
+MARKER_PK=0x.. MARKING=<addr> npm run mark -- <to> <amount> "<identity>" "<reason>"
+```
+
+The UI's **Marks** island shows a live feed (from → to, amount, reason, identity)
+and a "most marked" leaderboard, all aggregated from `Marked` events in the same
+`/bridge-state.jsonld`. This is what the EVM sidechain buys you over L1: events you
+can index, per-recipient aggregates, instant finality — in ~40 lines of Solidity.
+
 ## The peg is a STUB
 
 `wBTMK.pegMint` is gated by a single `owner` (the "peg operator"). In production
