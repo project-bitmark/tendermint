@@ -183,21 +183,33 @@ const ERC20 = [
 ];
 const MARK = ["function mark(address to, uint256 amount, string identity, string reason)"];
 const provider = new ethers.JsonRpcProvider(location.origin + "/rpc");
-let wallet = null, did = null;
+let wallet = null, did = null, sessionMode = false;
 const markStatus = (msg, cls = "") => { const el = $("[data-markstatus]"); el.textContent = msg; el.className = "markstatus " + cls; };
 
-function loadAccount() {
+// EVM session key for NIP-07 extension users (can't extract the schnorr key).
+function ensureSessionKey() {
+  let k = localStorage.getItem("evmSessionKey");
+  if (!k) { k = ethers.Wallet.createRandom().privateKey; localStorage.setItem("evmSessionKey", k); }
+  return k;
+}
+
+async function loadAccount() {
   let acct;
   try { acct = JSON.parse(localStorage.getItem("currentAccount") || "null"); } catch { acct = null; }
   if (!acct) return;
   did = acct["@id"] || (acct.pubkey ? `did:nostr:${acct.pubkey}` : null);
   if (acct.privkey) {
+    // guest/key login: the nostr key itself is the EVM signer (same secp256k1)
     wallet = new ethers.Wallet(acct.privkey.startsWith("0x") ? acct.privkey : "0x" + acct.privkey, provider);
-    refreshYou();
+    sessionMode = false;
   } else {
-    // NIP-07 extension: schnorr only, can't sign EVM
-    $("[data-you]").innerHTML = `Connected as <code class="sm">${short(did, 14)}</code> — but extension (NIP-07) keys can't sign EVM. Use a guest/key login to give marks.`;
+    // NIP-07 extension (schnorr only): sign EVM with a session key; identity stays
+    // the real did:nostr from the extension.
+    if (!did && window.nostr?.getPublicKey) { try { did = "did:nostr:" + (await window.nostr.getPublicKey()); } catch {} }
+    wallet = new ethers.Wallet(ensureSessionKey(), provider);
+    sessionMode = true;
   }
+  refreshYou();
 }
 
 async function refreshYou() {
@@ -211,7 +223,37 @@ async function refreshYou() {
   $("[data-you]").innerHTML =
     `You: <code class="sm">${short(did, 14)}</code> · <code class="sm">${short(wallet.address, 6)}</code> · ` +
     `<b>${fmtAmount(bal)}</b> wBTMK · ${fmtAmount(gas)} gas ` +
-    `<button type="button" class="linkbtn" data-faucet>get test funds</button>`;
+    `<button type="button" class="linkbtn" data-faucet>get test funds</button>` +
+    (sessionMode ? ` <span class="muted">· EVM via session key</span>` : "");
+
+  // deposit island
+  const reserve = latest?.l1?.reserveAddress;
+  const op = $("[data-dep-opreturn]"); if (op) op.textContent = wallet.address;
+  const qr = $("[data-dep-qr]");
+  if (qr && reserve) qr.src = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(reserve)}`;
+  const body = $("[data-deposit-body]"); if (body) body.hidden = false;
+  const prompt = $("[data-deposit-prompt]"); if (prompt) prompt.hidden = true;
+}
+
+const depStatus = (m, c = "") => { const el = $("[data-depstatus]"); el.textContent = m; el.className = "markstatus " + c; };
+async function simulateDeposit() {
+  if (!wallet) return connect();
+  const amount = $("[data-dep-amount]")?.value || "0.05";
+  depStatus("sending L1 deposit…");
+  try {
+    const r = await fetch("/deposit", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ address: wallet.address, amount }) });
+    const j = await r.json();
+    if (j.error) return depStatus("failed: " + j.error, "bad");
+    depStatus(`L1 tx ${short(j.txid, 8)} sent · minting…`);
+    const token = new ethers.Contract(latest.sidechain.token.address, ERC20, provider);
+    const before = await token.balanceOf(wallet.address);
+    for (let i = 0; i < 25; i++) {
+      await new Promise((r) => setTimeout(r, 2000));
+      const now = await token.balanceOf(wallet.address);
+      if (now > before) { depStatus(`received ${fmtAmount(ethers.formatEther(now - before))} wBTMK ✓`, "ok"); refreshYou(); tick(); return; }
+    }
+    depStatus("L1 deposit sent; awaiting mint…");
+  } catch (err) { depStatus("failed: " + (err.message || err), "bad"); }
 }
 
 async function faucet() {
@@ -269,6 +311,7 @@ document.addEventListener("xlogin", loadAccount);
 document.addEventListener("click", (e) => {
   if (e.target.closest("[data-connect]")) { if (!wallet) connect(); }
   if (e.target.closest("[data-faucet]")) faucet();
+  if (e.target.closest("[data-dep-go]")) simulateDeposit();
 });
 $("[data-markform]").addEventListener("submit", submitMark);
 

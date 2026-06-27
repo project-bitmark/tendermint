@@ -8,6 +8,9 @@ import { fileURLToPath } from "node:url";
 import { dirname, join, normalize, extname } from "node:path";
 import { ethers } from "ethers";
 import { Electrum, scripthashOfAddress } from "./electrum.js";
+import { buildSignedTx } from "./btmk-tx.js";
+import { opReturnScript, p2pkhAddress } from "./btmk.js";
+import * as secp from "@noble/secp256k1";
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const UI_DIR = join(__dir, "..", "ui");
@@ -44,6 +47,29 @@ const faucetToken = new ethers.Contract(WBTMK, ["function pegMint(address,uint25
 const readBody = (req) => new Promise((resolve, reject) => {
   let d = ""; req.on("data", (c) => (d += c)); req.on("end", () => resolve(d)); req.on("error", reject);
 });
+
+// demo depositor: a funded Bitmark L1 key used by /deposit to send a real
+// deposit (to the reserve, recipient EVM addr in OP_RETURN). PoC convenience.
+const DEPOSITOR_PK = (process.env.DEPOSITOR_PK || "").replace(/^0x/, "");
+const SECP_N = BigInt("0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141");
+async function simulateDeposit(toAddr, amountBTMK) {
+  const to = ethers.getAddress(toAddr);
+  const sats = BigInt(Math.round(Number(amountBTMK) * 1e8));
+  let d = BigInt("0x" + DEPOSITOR_PK);
+  let pub = Buffer.from(secp.getPublicKey(d, true));
+  if (pub[0] === 0x03) pub = Buffer.from(secp.getPublicKey(SECP_N - d, true));
+  const sender = p2pkhAddress(pub.toString("hex"));
+  const e = await elec();
+  const utxos = (await e.request("blockchain.scripthash.listunspent", [scripthashOfAddress(sender)]))
+    .map((u) => ({ txid: u.tx_hash, vout: u.tx_pos, value: u.value }));
+  const built = buildSignedTx({
+    utxos, privHex: DEPOSITOR_PK,
+    outputs: [{ address: RESERVE, value: sats }, { script: opReturnScript(to) }],
+    changeAddress: sender, fee: 100000n,
+  });
+  const txid = await e.request("blockchain.transaction.broadcast", [built.hex]);
+  return { txid, sender, to, amountBTMK };
+}
 
 // reuse one Electrum connection; reconnect on demand
 let electrum = null;
@@ -161,6 +187,18 @@ const server = http.createServer(async (req, res) => {
       }
       res.writeHead(200, { "content-type": "application/json" });
       return res.end(JSON.stringify(out));
+    }
+    // simulate a real L1 deposit to the reserve, recipient = caller's EVM address
+    if (url.pathname === "/deposit" && req.method === "POST") {
+      const { address, amount } = JSON.parse((await readBody(req)) || "{}");
+      if (!ethers.isAddress(address)) { res.writeHead(400); return res.end(JSON.stringify({ error: "bad address" })); }
+      if (!DEPOSITOR_PK) { res.writeHead(501); return res.end(JSON.stringify({ error: "no demo depositor configured (set DEPOSITOR_PK)" })); }
+      try {
+        const r = await simulateDeposit(address, amount || "0.05");
+        res.writeHead(200, { "content-type": "application/json" }); return res.end(JSON.stringify(r));
+      } catch (err) {
+        res.writeHead(500, { "content-type": "application/json" }); return res.end(JSON.stringify({ error: String(err.message || err) }));
+      }
     }
     // static files from ui/
     let p = url.pathname === "/" ? "/index.html" : url.pathname;

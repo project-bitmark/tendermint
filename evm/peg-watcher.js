@@ -86,18 +86,29 @@ async function isOwnChange(tx, e) {
   return false;
 }
 
-async function main() {
-  console.log(`peg-watcher: ${RESERVE} (Bitmark) -> wBTMK ${WBTMK}`);
-  console.log(`operator ${wallet.address}, recipient ${USER}, min_conf ${MIN_CONF}`);
+// lazily (re)connect to Electrum; re-subscribe for low-latency notifications
+let electrum = null;
+async function elec() {
+  if (electrum?.sock && !electrum.sock.destroyed) return electrum;
   const e = new Electrum(HOST, PORT);
   await e.connect();
   await e.request("server.version", ["pegwatcher", "1.4"]);
-  let tip = (await e.request("blockchain.headers.subscribe")).height;
-  e.on("blockchain.headers.subscribe", (p) => { if (p?.[0]?.height) tip = p[0].height; });
   const sh = scripthashOfAddress(RESERVE);
-  console.log(`watching scripthash ${sh}, tip ${tip}`);
+  await e.request("blockchain.scripthash.subscribe", [sh]);
+  e.on("blockchain.scripthash.subscribe", () => poll().catch(() => {}));
+  e.sock.on("close", () => { if (electrum === e) electrum = null; });
+  electrum = e;
+  return e;
+}
 
-  async function scan(reason) {
+let scanning = false;
+async function poll() {
+  if (scanning) return;
+  scanning = true;
+  try {
+    const e = await elec();
+    const tip = (await e.request("blockchain.headers.subscribe")).height;
+    const sh = scripthashOfAddress(RESERVE);
     const hist = await e.request("blockchain.scripthash.get_history", [sh]);
     for (const { tx_hash, height } of hist) {
       if (seen.has(tx_hash)) continue;
@@ -119,12 +130,15 @@ async function main() {
         console.error(`  pegMint failed: ${err.shortMessage || err.message}`);
       }
     }
+  } catch (err) {
+    electrum = null; // force reconnect on next poll
+  } finally {
+    scanning = false;
   }
-
-  await scan("startup");
-  await e.request("blockchain.scripthash.subscribe", [sh]);
-  e.on("blockchain.scripthash.subscribe", () => scan("subscribe").catch(console.error));
-  console.log("watching for deposits... (Ctrl-C to stop)");
 }
 
-main().catch((e) => { console.error(e); process.exit(1); });
+console.log(`peg-watcher: ${RESERVE} (Bitmark) -> wBTMK ${WBTMK}`);
+console.log(`operator ${wallet.address}, default recipient ${USER}, min_conf ${MIN_CONF}`);
+await poll();
+setInterval(() => poll().catch(() => {}), 3000); // keepalive + safety-net rescan
+console.log("watching for deposits (resilient)... (Ctrl-C to stop)");

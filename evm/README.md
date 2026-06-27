@@ -79,6 +79,18 @@ anyone bridges to their own address rather than a fixed one. `deposit.js` builds
 such a deposit: `SENDER_PK=<btmk-hex> node deposit.js <amount-BTMK> <0xEvm>`. The
 watcher also skips the reserve's own peg-out change (not a real inbound deposit).
 
+**Resilient watcher.** `peg-watcher.js` runs as a daemon: it polls on an interval
+(keepalive + safety-net rescan) and auto-reconnects to ElectrumX on drop, keeping
+the subscription for low latency. It no longer dies when the relay closes an idle
+connection.
+
+**Deposit flow in the UI.** The "Bridge in" island shows the reserve (with a QR)
+and your connected EVM address as the `OP_RETURN` to include. For demos, a
+**"Deposit to me"** button hits `POST /deposit`, which sends a *real* L1 deposit
+from a configured `DEPOSITOR_PK` to the reserve with your address in `OP_RETURN` —
+you then watch your wBTMK arrive. (Operator convenience; the real path is a user
+sending the OP_RETURN deposit from their own Bitmark wallet.)
+
 ## Peg-out: release BTMK back to L1 (working — full round-trip)
 
 `redeem-watcher.js` closes the loop. It watches wBTMK `PegBurn` events and, for
@@ -149,8 +161,11 @@ pre-funded account:
 - `POST /rpc` — same-origin JSON-RPC proxy (browser signs + sends without CORS).
 - `POST /faucet` — drips native gas + a little wBTMK to your derived address.
 
-NIP-07 *extension* logins can't sign EVM (schnorr ≠ ECDSA), so guest/key logins
-are the path. The signing key never leaves the browser.
+NIP-07 *extension* logins can't sign EVM (schnorr ≠ ECDSA). Instead of blocking
+them, the UI gives extension users an **EVM session key** (generated + stored
+locally) for signing, while the **identity stays their real `did:nostr`** from the
+extension. Guest/key logins sign with the nostr key directly. The signing key
+never leaves the browser.
 
 ## The peg is a STUB
 

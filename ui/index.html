@@ -74,6 +74,27 @@
         </tbody>
       </table>
     </section>
+    <!-- island: bridge in (deposit flow) -->
+    <section class="card wide" aria-labelledby="dep-h">
+      <h2 id="dep-h">Bridge in <span class="subtitle">· BTMK → wBTMK</span></h2>
+      <p class="you" data-deposit-prompt>Connect to bridge BTMK to your own address.</p>
+      <div class="deposit-body" data-deposit-body hidden>
+        <div class="dep-info">
+          <p class="muted">Send BTMK to the reserve with an <code>OP_RETURN</code> output holding your EVM address — the watcher mints wBTMK straight to you.</p>
+          <dl class="kv">
+            <dt>Reserve</dt><dd><code class="sm wrap" data-bind="l1.reserveAddress">—</code></dd>
+            <dt>OP_RETURN</dt><dd><code class="sm wrap" data-dep-opreturn>—</code></dd>
+          </dl>
+        </div>
+        <div class="dep-action">
+          <img class="qr" data-dep-qr alt="reserve QR" width="120" height="120">
+          <label>Simulate a deposit<span class="suffix"><input type="number" data-dep-amount value="0.05" step="0.01" min="0"> BTMK</span></label>
+          <button type="button" data-dep-go>Deposit to me</button>
+          <span class="markstatus" data-depstatus></span>
+        </div>
+      </div>
+    </section>
+
     <!-- island: give a mark (wallet-connected action) -->
     <section class="card wide" aria-labelledby="give-h">
       <h2 id="give-h">Give a mark <span class="subtitle">· sign with your did:nostr key</span></h2>

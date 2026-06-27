@@ -75,6 +75,19 @@ code.wrap { word-break: break-all; }
 .flow.in { color: var(--ok); background: #e6f4ea; border: 1px solid #aedcb9; }
 .flow.out { color: #8250df; background: #f3eefc; border: 1px solid #d8c6f5; }
 
+/* deposit island */
+.deposit-body { display: grid; grid-template-columns: 1fr 240px; gap: 1.5rem; align-items: start; }
+.dep-info .kv { margin-top: .6rem; }
+.dep-action { display: flex; flex-direction: column; gap: .6rem; align-items: flex-start; }
+.dep-action label { display: flex; flex-direction: column; gap: .25rem; font-size: .8rem; color: var(--muted); }
+.dep-action input { font: inherit; padding: .5rem .6rem; border: 1px solid var(--line); border-radius: 8px;
+  background: #fff; color: var(--ink); font-family: var(--mono); font-size: .85rem; width: 7rem; }
+.dep-action .suffix { display: flex; align-items: center; gap: .4rem; font-family: var(--mono); color: var(--muted); }
+.dep-action button { background: var(--accent); color: #fff; border: 0; border-radius: 8px; padding: .5rem 1.1rem; font-weight: 600; cursor: pointer; }
+.dep-action button:hover { opacity: .92; }
+.qr { border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+@media (max-width: 640px) { .deposit-body { grid-template-columns: 1fr; } }
+
 /* give a mark form */
 .you { color: var(--muted); font-size: .88rem; margin: .2rem 0 .8rem; }
 .you b { color: var(--accent); }
